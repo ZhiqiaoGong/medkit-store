@@ -1,0 +1,10 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: medkit-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - medkit-mongo:/data/db
+volumes:
+  medkit-mongo:
