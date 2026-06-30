@@ -115,6 +115,8 @@ GET /health
 GET /ready
 ```
 
+`/health` is a process liveness check. `/ready` verifies both MongoDB and Redis and returns `503` when either dependency is unavailable.
+
 ### Products
 
 | Method | Path | Description | Auth |

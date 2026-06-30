@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import Product from '../models/Product.js';
 import { validate } from '../middlewares/validate.js';
-import { productCreateSchema } from '../schemas/product.js';
+import { productCreateSchema, productUpdateSchema } from '../schemas/product.js';
 import { redis } from '../lib/redis.js';
 import { requireAdmin } from '../middlewares/auth.js';
 
@@ -15,6 +15,7 @@ const router = Router();
 router.post('/products', requireAdmin, validate(productCreateSchema), async (req, res, next) => {
   try {
     const doc = await Product.create(req.body);
+    await redis.incr('product:version');
     res.status(201).json(doc);
   } catch (err) {
     // Handle duplicate SKU error nicely.
@@ -58,18 +59,26 @@ router.get('/products/:sku', async (req, res, next) => {
 });
 
 // Patch update by Mongo _id.
-router.patch('/products/:id', requireAdmin, async (req, res, next) => {
+router.patch('/products/:id', requireAdmin, validate(productUpdateSchema), async (req, res, next) => {
   try {
-    const doc = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const doc = await Product.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Product not found' });
-    await redis.del(cacheKey(doc.sku));
+
+    const previousSku = doc.sku;
+    doc.set(req.body);
+    if (doc.stock.reserved > doc.stock.total) {
+      return res.status(400).json({ error: 'Reserved stock cannot exceed total stock' });
+    }
+    await doc.save();
+
+    await redis.del(...new Set([cacheKey(previousSku), cacheKey(doc.sku)]));
     await redis.incr('product:version');
     res.json(doc);
   } catch (err) {
+    if (err?.code === 11000) {
+      err.status = 409;
+      err.message = 'SKU already exists';
+    }
     next(err);
   }
 });

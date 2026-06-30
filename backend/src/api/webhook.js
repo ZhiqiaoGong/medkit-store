@@ -31,7 +31,7 @@ router.post(
 
       if (orderId) {
         // Idempotent: returns the order only if it was actually changed from pending → paid.
-        const order = await Order.findOneAndUpdate(
+        await Order.findOneAndUpdate(
           {
             _id: orderId,
             status: 'pending',

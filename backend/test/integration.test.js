@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 process.env.STRIPE_SECRET_KEY ||= 'sk_test_placeholder';
 process.env.JWT_SECRET ||= 'test-jwt-secret';
 process.env.CLIENT_URL ||= 'http://localhost:3000';
+process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_webhook_secret';
 
 if (!process.env.MONGO_URI) {
   throw new Error('MONGO_URI is required to run integration tests');
@@ -16,8 +17,11 @@ mongoUrl.pathname = `/medkit_test_${process.pid}`;
 
 const { app } = await import('../src/index.js');
 const { default: Product } = await import('../src/models/Product.js');
+const { default: Order } = await import('../src/models/Order.js');
+const { default: User } = await import('../src/models/User.js');
 const { reserveStock, releaseStock } = await import('../src/lib/inventory.js');
 const { redis } = await import('../src/lib/redis.js');
+const { stripe } = await import('../src/lib/stripe.js');
 
 let server;
 let baseUrl;
@@ -25,6 +29,7 @@ let baseSku;
 let addonSku;
 let userToken;
 let otherUserToken;
+let adminToken;
 
 async function request(path, { method = 'GET', body, token } = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -36,6 +41,66 @@ async function request(path, { method = 'GET', body, token } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   return { status: response.status, body: await response.json() };
+}
+
+async function sendWebhook(type, order, sessionId) {
+  const payload = JSON.stringify({
+    id: `evt_${type}_${Date.now()}`,
+    object: 'event',
+    type,
+    data: {
+      object: {
+        id: sessionId,
+        object: 'checkout.session',
+        metadata: { orderId: order._id.toString() },
+      },
+    },
+  });
+  const signature = stripe.webhooks.generateTestHeaderString({
+    payload,
+    secret: process.env.STRIPE_WEBHOOK_SECRET,
+  });
+  const response = await fetch(`${baseUrl}/api/webhooks/stripe`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'stripe-signature': signature,
+    },
+    body: payload,
+  });
+  return { status: response.status, body: await response.json() };
+}
+
+async function createWebhookOrder(label, quantity) {
+  const sku = `TEST-WEBHOOK-${label}-${process.pid}-${Date.now()}`;
+  await Product.create({
+    name: `Webhook ${label}`,
+    sku,
+    type: 'BASE',
+    price: 100,
+    stock: { total: 10, reserved: 0 },
+  });
+
+  const items = [{
+    sku,
+    name: `Webhook ${label}`,
+    type: 'BASE',
+    price: 100,
+    quantity,
+    subtotal: 100 * quantity,
+  }];
+  await reserveStock(items);
+
+  const sessionId = `cs_test_${label}_${Date.now()}`;
+  const order = await Order.create({
+    userId: new mongoose.Types.ObjectId(),
+    items,
+    total: 100 * quantity,
+    status: 'pending',
+    stripeSessionId: sessionId,
+    inventoryReserved: true,
+  });
+  return { order, items, sessionId, sku };
 }
 
 before(async () => {
@@ -65,18 +130,28 @@ before(async () => {
     },
   ]);
 
+  const ownerEmail = `owner-${suffix}@example.com`;
+  const otherEmail = `other-${suffix}@example.com`;
   const user = await request('/api/auth/register', {
     method: 'POST',
-    body: { email: `owner-${suffix}@example.com`, password: 'password123' },
+    body: { email: ownerEmail, password: 'password123' },
   });
   const otherUser = await request('/api/auth/register', {
     method: 'POST',
-    body: { email: `other-${suffix}@example.com`, password: 'password123' },
+    body: { email: otherEmail, password: 'password123' },
   });
   assert.equal(user.status, 201);
   assert.equal(otherUser.status, 201);
   userToken = user.body.token;
   otherUserToken = otherUser.body.token;
+
+  await User.updateOne({ email: otherEmail }, { $set: { role: 'admin' } });
+  const admin = await request('/api/auth/login', {
+    method: 'POST',
+    body: { email: otherEmail, password: 'password123' },
+  });
+  assert.equal(admin.status, 200);
+  adminToken = admin.body.token;
 });
 
 after(async () => {
@@ -86,10 +161,15 @@ after(async () => {
   await redis.quit();
 });
 
-test('health endpoint responds', async () => {
-  const response = await request('/health');
-  assert.equal(response.status, 200);
-  assert.equal(response.body.status, 'ok');
+test('health and readiness endpoints report service status', async () => {
+  const health = await request('/health');
+  assert.equal(health.status, 200);
+  assert.equal(health.body.status, 'ok');
+
+  const ready = await request('/ready');
+  assert.equal(ready.status, 200);
+  assert.equal(ready.body.ready, true);
+  assert.deepEqual(ready.body.checks, { mongo: 'up', redis: 'up' });
 });
 
 test('quote validates input, product types, and totals', async () => {
@@ -152,6 +232,87 @@ test('duplicate SKUs are merged before checking stock', async () => {
   assert.equal(response.status, 400);
 });
 
+test('admin product writes validate input and invalidate caches', async () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const originalSku = `TEST-ADMIN-${suffix}`;
+  const renamedSku = `${originalSku}-RENAMED`;
+  const versionBefore = Number(await redis.get('product:version') || 0);
+
+  const forbidden = await request('/api/products', {
+    method: 'POST',
+    token: userToken,
+    body: { name: 'Forbidden', sku: `${originalSku}-NO`, type: 'ADDON', price: 1 },
+  });
+  assert.equal(forbidden.status, 403);
+
+  const created = await request('/api/products', {
+    method: 'POST',
+    token: adminToken,
+    body: {
+      name: 'Admin Test',
+      sku: originalSku,
+      type: 'ADDON',
+      price: 250,
+      stock: { total: 10 },
+    },
+  });
+  assert.equal(created.status, 201);
+  assert.equal(Number(await redis.get('product:version')), versionBefore + 1);
+
+  const cachedOriginal = await request(`/api/products/${originalSku}`);
+  assert.equal(cachedOriginal.status, 200);
+
+  const renamed = await request(`/api/products/${created.body._id}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { sku: renamedSku },
+  });
+  assert.equal(renamed.status, 200);
+
+  const staleOriginal = await request(`/api/products/${originalSku}`);
+  assert.equal(staleOriginal.status, 404);
+  const current = await request(`/api/products/${renamedSku}`);
+  assert.equal(current.status, 200);
+
+  const firstQuote = await request('/api/quote', {
+    method: 'POST',
+    body: { addons: [{ sku: renamedSku, quantity: 1 }] },
+  });
+  assert.equal(firstQuote.body.total, 250);
+
+  const repriced = await request(`/api/products/${created.body._id}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { price: 300 },
+  });
+  assert.equal(repriced.status, 200);
+  const secondQuote = await request('/api/quote', {
+    method: 'POST',
+    body: { addons: [{ sku: renamedSku, quantity: 1 }] },
+  });
+  assert.equal(secondQuote.body.total, 300);
+
+  const emptyPatch = await request(`/api/products/${created.body._id}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: {},
+  });
+  assert.equal(emptyPatch.status, 400);
+
+  const unknownField = await request(`/api/products/${created.body._id}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { unexpected: true },
+  });
+  assert.equal(unknownField.status, 400);
+
+  const deleted = await request(`/api/products/${created.body._id}`, {
+    method: 'DELETE',
+    token: adminToken,
+  });
+  assert.equal(deleted.status, 200);
+});
+
 test('concurrent reservations cannot oversell stock', async () => {
   const items = [{ sku: baseSku, quantity: 30 }];
   const results = await Promise.allSettled([
@@ -168,4 +329,41 @@ test('concurrent reservations cannot oversell stock', async () => {
   await releaseStock(items);
   const released = await Product.findOne({ sku: baseSku }).lean();
   assert.equal(released.stock.reserved, 0);
+});
+
+test('completed webhook marks an order paid without double-counting stock', async () => {
+  const { order, items, sessionId, sku } = await createWebhookOrder('completed', 2);
+
+  const first = await sendWebhook('checkout.session.completed', order, sessionId);
+  assert.equal(first.status, 200);
+
+  const paid = await Order.findById(order._id).lean();
+  const stockAfterFirst = await Product.findOne({ sku }).lean();
+  assert.equal(paid.status, 'paid');
+  assert.equal(stockAfterFirst.stock.reserved, 2);
+
+  const repeated = await sendWebhook('checkout.session.completed', order, sessionId);
+  assert.equal(repeated.status, 200);
+  const stockAfterRepeat = await Product.findOne({ sku }).lean();
+  assert.equal(stockAfterRepeat.stock.reserved, 2);
+
+  await releaseStock(items);
+});
+
+test('expired webhook cancels an order and releases stock once', async () => {
+  const { order, sessionId, sku } = await createWebhookOrder('expired', 3);
+
+  const first = await sendWebhook('checkout.session.expired', order, sessionId);
+  assert.equal(first.status, 200);
+
+  const cancelled = await Order.findById(order._id).lean();
+  const stockAfterFirst = await Product.findOne({ sku }).lean();
+  assert.equal(cancelled.status, 'cancelled');
+  assert.equal(cancelled.inventoryReserved, false);
+  assert.equal(stockAfterFirst.stock.reserved, 0);
+
+  const repeated = await sendWebhook('checkout.session.expired', order, sessionId);
+  assert.equal(repeated.status, 200);
+  const stockAfterRepeat = await Product.findOne({ sku }).lean();
+  assert.equal(stockAfterRepeat.stock.reserved, 0);
 });
