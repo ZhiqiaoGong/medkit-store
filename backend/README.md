@@ -126,7 +126,7 @@ GET /ready
 | `DELETE` | `/api/products/:id` | Delete product | Admin |
 
 Product types:
-- `BASE` — main product, one per order
+- `BASE` — main kit product
 - `ADDON` — accessory with configurable quantity
 
 ### Quote
@@ -140,7 +140,9 @@ Returns a price breakdown without creating an order. Results cached in Redis by 
 Request:
 ```json
 {
-  "baseSku": "BASE-AVP-01",
+  "bases": [
+    { "sku": "BASE-AVP-01", "quantity": 1 }
+  ],
   "addons": [
     { "sku": "ADD-MIC-PRO", "quantity": 1 },
     { "sku": "ADD-BATT-XL", "quantity": 2 }
@@ -173,10 +175,11 @@ Checkout response:
 POST /api/webhooks/stripe
 ```
 
-Handles `checkout.session.completed`:
-- Updates order status `pending` → `paid` (idempotent)
-- Increments `stock.reserved` for each purchased item
-- Invalidates Redis cache for affected products
+Inventory is atomically reserved before Stripe Checkout is created.
+
+- `checkout.session.completed` updates the order from `pending` to `paid` (idempotent)
+- `checkout.session.expired` cancels the order and releases its reserved inventory
+- Both inventory reservation and release invalidate affected Redis caches
 
 For local testing:
 ```bash
@@ -203,7 +206,7 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 | `price` | Number | USD cents-free (e.g. 2999 = $29.99 is wrong — 2999 = $2,999) |
 | `version` | String | Defaults to `1.0.0` |
 | `stock.total` | Number | Physical inventory count |
-| `stock.reserved` | Number | Units sold; available = total − reserved |
+| `stock.reserved` | Number | Units held in Checkout or sold; available = total − reserved |
 | `active` | Boolean | Defaults to `true` |
 
 ### Order
@@ -216,13 +219,22 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 | `currency` | String | Defaults to `USD` |
 | `status` | `pending` \| `paid` \| `cancelled` | |
 | `stripeSessionId` | String | Set after checkout session is created |
+| `inventoryReserved` | Boolean | Prevents duplicate Checkout inventory reservations |
 
 ## Caching Strategy
 
 | Data | TTL | Invalidation |
 |------|-----|-------------|
 | Product by SKU | 5 min | Explicit `DEL` on PATCH / DELETE / stock update |
-| Quote results | 10 min | Versioned key (`quote:v{N}:...`) — `INCR product:version` on any product change makes old keys unreachable |
+| Quote results | 10 min | Versioned key (`quote:v2:p{N}:...`) — `INCR product:version` makes old keys unreachable |
+
+## Testing
+
+MongoDB and Redis must be running. Tests use a temporary MongoDB database, clean it up automatically, and do not make live Stripe API calls.
+
+```bash
+npm test
+```
 
 ## Scripts
 
@@ -230,5 +242,6 @@ stripe listen --forward-to localhost:4000/api/webhooks/stripe
 |---------|-------------|
 | `npm run dev` | Start with nodemon (hot reload) |
 | `npm start` | Production start |
+| `npm test` | Run the isolated integration test suite |
 | `npm run seed` | Seed sample products into MongoDB |
 | `npm run make-admin <email>` | Promote a registered user to admin |

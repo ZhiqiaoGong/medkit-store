@@ -1,145 +1,176 @@
 {
-    "info": {
-      "_postman_id": "8c2b4d0b-0000-4b1a-a1a1-col-medkit",
-      "name": "Medkit Backend",
-      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  "info": {
+    "_postman_id": "8c2b4d0b-0000-4b1a-a1a1-col-medkit",
+    "name": "Medkit Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        }
+      ]
     },
-    "item": [
-      {
-        "name": "Health",
-        "item": [
-          {
-            "name": "GET /health",
-            "request": {
-              "method": "GET",
-              "header": [],
-              "url": {
-                "raw": "{{base_url}}/health",
-                "host": ["{{base_url}}"],
-                "path": ["health"]
-              }
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET /api/products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/products", "host": ["{{base_url}}"], "path": ["api", "products"] }
+          }
+        },
+        {
+          "name": "GET /api/products?type=BASE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/products?type=BASE",
+              "host": ["{{base_url}}"],
+              "path": ["api", "products"],
+              "query": [{ "key": "type", "value": "BASE" }]
             }
           }
-        ]
-      },
-      {
-        "name": "Products",
-        "item": [
-          {
-            "name": "POST /api/products (create)",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"name\": \"Battery XL\",\n  \"sku\": \"ADD-BATT-XL\",\n  \"type\": \"ADDON\",\n  \"price\": 149\n}"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/products",
-                "host": ["{{base_url}}"],
-                "path": ["api", "products"]
-              }
-            }
+        },
+        {
+          "name": "GET /api/products/:sku",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/products/BASE-AVP-01", "host": ["{{base_url}}"], "path": ["api", "products", "BASE-AVP-01"] }
           }
-        ]
-      },
-      {
-        "name": "Quote",
-        "item": [
-          {
-            "name": "POST /api/quote — only base",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"baseSku\": \"BASE-AVP-01\"\n}"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/quote",
-                "host": ["{{base_url}}"],
-                "path": ["api", "quote"]
-              }
-            }
-          },
-          {
-            "name": "POST /api/quote — only addons",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"addonSkus\": [\"ADD-MIC-PRO\", \"ADD-BATT-XL\"]\n}"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/quote",
-                "host": ["{{base_url}}"],
-                "path": ["api", "quote"]
-              }
-            }
-          },
-          {
-            "name": "POST /api/quote — base + addons",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"baseSku\": \"BASE-AVP-01\",\n  \"addonSkus\": [\"ADD-MIC-PRO\", \"ADD-BATT-XL\"]\n}"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/quote",
-                "host": ["{{base_url}}"],
-                "path": ["api", "quote"]
-              }
-            }
-          },
-          {
-            "name": "POST /api/quote — error: empty body",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{ }"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/quote",
-                "host": ["{{base_url}}"],
-                "path": ["api", "quote"]
-              }
-            }
-          },
-          {
-            "name": "POST /api/quote — error: addonSkus not array",
-            "request": {
-              "method": "POST",
-              "header": [
-                { "key": "Content-Type", "value": "application/json" }
-              ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"addonSkus\": \"ADD-MIC-PRO\"\n}"
-              },
-              "url": {
-                "raw": "{{base_url}}/api/quote",
-                "host": ["{{base_url}}"],
-                "path": ["api", "quote"]
-              }
-            }
+        }
+      ]
+    },
+    {
+      "name": "Quote",
+      "item": [
+        {
+          "name": "POST /api/quote — only bases",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bases\": [\n    { \"sku\": \"BASE-AVP-01\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/quote", "host": ["{{base_url}}"], "path": ["api", "quote"] }
           }
-        ]
-      }
-    ]
-  }
-  
+        },
+        {
+          "name": "POST /api/quote — only addons",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addons\": [\n    { \"sku\": \"ADD-MIC-PRO\", \"quantity\": 1 },\n    { \"sku\": \"ADD-BATT-XL\", \"quantity\": 2 }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/quote", "host": ["{{base_url}}"], "path": ["api", "quote"] }
+          }
+        },
+        {
+          "name": "POST /api/quote — bases + addons",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bases\": [\n    { \"sku\": \"BASE-AVP-01\", \"quantity\": 1 },\n    { \"sku\": \"BASE-AVP-01\", \"quantity\": 1 }\n  ],\n  \"addons\": [\n    { \"sku\": \"ADD-MIC-PRO\", \"quantity\": 1 },\n    { \"sku\": \"ADD-BATT-XL\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/quote", "host": ["{{base_url}}"], "path": ["api", "quote"] }
+          }
+        },
+        {
+          "name": "POST /api/quote — error: empty body",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/api/quote", "host": ["{{base_url}}"], "path": ["api", "quote"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "POST /api/orders — create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bases\": [\n    { \"sku\": \"BASE-AVP-01\", \"quantity\": 1 }\n  ],\n  \"addons\": [\n    { \"sku\": \"ADD-MIC-PRO\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/orders", "host": ["{{base_url}}"], "path": ["api", "orders"] }
+          }
+        },
+        {
+          "name": "GET /api/orders — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/orders", "host": ["{{base_url}}"], "path": ["api", "orders"] }
+          }
+        },
+        {
+          "name": "POST /api/orders/:id/checkout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/orders/{{order_id}}/checkout", "host": ["{{base_url}}"], "path": ["api", "orders", "{{order_id}}", "checkout"] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:4000" },
+    { "key": "token", "value": "" },
+    { "key": "order_id", "value": "" }
+  ]
+}

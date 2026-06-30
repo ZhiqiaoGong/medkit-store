@@ -6,5 +6,12 @@ services:
       - "27017:27017"
     volumes:
       - medkit-mongo:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: medkit-redis
+    ports:
+      - "6379:6379"
+
 volumes:
   medkit-mongo:

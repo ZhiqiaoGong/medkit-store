@@ -1,8 +1,7 @@
 import express, { Router } from 'express';
 import Order from '../models/Order.js';
-import Product from '../models/Product.js';
 import { stripe } from '../lib/stripe.js';
-import { redis } from '../lib/redis.js';
+import { releaseStock, invalidateStockCache } from '../lib/inventory.js';
 
 const router = Router();
 
@@ -33,20 +32,35 @@ router.post(
       if (orderId) {
         // Idempotent: returns the order only if it was actually changed from pending → paid.
         const order = await Order.findOneAndUpdate(
-          { _id: orderId, status: 'pending' },
-          { status: 'paid' }
+          {
+            _id: orderId,
+            status: 'pending',
+            inventoryReserved: true,
+            stripeSessionId: session.id,
+          },
+          { $set: { status: 'paid' } }
+        );
+      }
+    }
+
+    if (event.type === 'checkout.session.expired') {
+      const session = event.data.object;
+      const orderId = session.metadata?.orderId;
+
+      if (orderId) {
+        const order = await Order.findOneAndUpdate(
+          {
+            _id: orderId,
+            status: 'pending',
+            inventoryReserved: true,
+            stripeSessionId: session.id,
+          },
+          { $set: { status: 'cancelled', inventoryReserved: false } }
         );
 
-        // Skip stock update if order was already paid (order is null).
         if (order) {
-          const bulkOps = order.items.map(item => ({
-            updateOne: {
-              filter: { sku: item.sku },
-              update: { $inc: { 'stock.reserved': item.quantity } },
-            },
-          }));
-          await Product.bulkWrite(bulkOps);
-          await redis.del(...order.items.map(item => `product:${item.sku}`));
+          await releaseStock(order.items);
+          await invalidateStockCache(order.items);
         }
       }
     }

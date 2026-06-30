@@ -1,28 +1,22 @@
 import { z } from 'zod';
 
-// Define schema for each addon item
-const addonItemSchema = z.object({
-  sku: z.string({
-    required_error: "Addon SKU is required",
-  }),
-  quantity: z
-    .number({
-      required_error: "Quantity is required",
-      invalid_type_error: "Quantity must be a number",
-    })
-    .int()
-    .positive()
-    .default(1), // default to 1 if not provided
+const itemSchema = z.object({
+  sku: z.string(),
+  quantity: z.number().int().positive().default(1),
 });
 
 export const quoteRequestSchema = z
   .object({
-    baseSku: z.string().optional(),
-    addons: z.array(addonItemSchema).optional(),
+    bases:  z.array(itemSchema).optional(),
+    addons: z.array(itemSchema).optional(),
   })
   .refine(
-    (data) => data.baseSku || (data.addons && data.addons.length > 0),
-    {
-      message: "At least one of baseSku or addons is required",
-    }
+    (data) =>
+      (data.bases && data.bases.length > 0) ||
+      (data.addons && data.addons.length > 0),
+    { message: 'At least one of bases or addons is required' }
   );
+
+export const quoteSchema = z.object({
+  body: quoteRequestSchema,
+});

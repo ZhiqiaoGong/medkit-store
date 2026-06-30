@@ -21,6 +21,7 @@ const OrderSchema = new mongoose.Schema(
     currency:        { type: String, default: 'USD' },
     status:          { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
     stripeSessionId: { type: String, default: null },
+    inventoryReserved: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

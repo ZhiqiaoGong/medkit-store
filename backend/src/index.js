@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import { pathToFileURL } from 'url';
 
 import { connectMongo } from './lib/mongo.js';
 import healthRouter from './api/health.js';
@@ -12,7 +13,7 @@ import ordersRouter from './api/orders.js';
 import webhookRouter from './api/webhook.js';
 import authRouter from './api/auth.js';
 
-const app = express();
+export const app = express();
 
 // Webhook must be mounted before express.json() to preserve raw body for signature verification.
 app.use('/api/webhooks/stripe', webhookRouter);
@@ -37,8 +38,8 @@ app.use((_req, res) => {
   
   // Centralized error handler
   app.use((err, _req, res, _next) => {
-    console.error(err);
     const status = err.status || 500;
+    if (status >= 500) console.error(err);
     res.status(status).json({
       error: err.message || 'Internal Server Error'
     });
@@ -55,7 +56,11 @@ async function start() {
   });
 }
 
-start().catch((err) => {
-  console.error('Fatal: failed to start', err);
-  process.exit(1);
-});
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMainModule) {
+  start().catch((err) => {
+    console.error('Fatal: failed to start', err);
+    process.exit(1);
+  });
+}
