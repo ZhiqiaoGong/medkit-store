@@ -12,6 +12,7 @@ const productInputSchema = z.object({
   version: z.string().min(1).optional(),
   price: z.number().nonnegative(),
   currency: z.string().min(1).optional(),
+  imageUrl: z.string().trim().min(1).max(2048).nullable().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   stock: stockSchema.optional(),
   active: z.boolean().optional(),

@@ -253,10 +253,12 @@ test('admin product writes validate input and invalidate caches', async () => {
       sku: originalSku,
       type: 'ADDON',
       price: 250,
+      imageUrl: '/products/admin-test.webp',
       stock: { total: 10 },
     },
   });
   assert.equal(created.status, 201);
+  assert.equal(created.body.imageUrl, '/products/admin-test.webp');
   assert.equal(Number(await redis.get('product:version')), versionBefore + 1);
 
   const cachedOriginal = await request(`/api/products/${originalSku}`);

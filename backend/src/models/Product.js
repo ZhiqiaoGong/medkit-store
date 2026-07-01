@@ -9,6 +9,7 @@ const ProductSchema = new mongoose.Schema(
     version: { type: String, default: '1.0.0' },
     price: { type: Number, required: true, min: 0 },
     currency: { type: String, default: 'USD' },
+    imageUrl: { type: String, trim: true, default: null },
     attributes: { type: mongoose.Schema.Types.Mixed, default: {} },
     stock: {
       total: { type: Number, default: 0, min: 0 },
