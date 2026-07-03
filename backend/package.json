@@ -2,6 +2,9 @@
   "name": "medkit-backend",
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "nodemon --watch src --exec node src/index.js",
     "start": "node src/index.js",

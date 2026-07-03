@@ -31,12 +31,13 @@ let userToken;
 let otherUserToken;
 let adminToken;
 
-async function request(path, { method = 'GET', body, token } = {}) {
+async function request(path, { method = 'GET', body, token, headers = {} } = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       ...(body ? { 'content-type': 'application/json' } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -170,6 +171,23 @@ test('health and readiness endpoints report service status', async () => {
   assert.equal(ready.status, 200);
   assert.equal(ready.body.ready, true);
   assert.deepEqual(ready.body.checks, { mongo: 'up', redis: 'up' });
+});
+
+test('CORS allows the configured client and rejects unknown origins', async () => {
+  const allowed = await fetch(`${baseUrl}/health`, {
+    headers: { origin: process.env.CLIENT_URL },
+  });
+  assert.equal(allowed.status, 200);
+  assert.equal(
+    allowed.headers.get('access-control-allow-origin'),
+    process.env.CLIENT_URL
+  );
+
+  const blocked = await request('/health', {
+    headers: { origin: 'https://untrusted.example' },
+  });
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body.error, 'Origin not allowed by CORS');
 });
 
 test('quote validates input, product types, and totals', async () => {

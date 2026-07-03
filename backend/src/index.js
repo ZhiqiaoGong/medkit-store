@@ -15,12 +15,30 @@ import authRouter from './api/auth.js';
 
 export const app = express();
 
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl)
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 // Webhook must be mounted before express.json() to preserve raw body for signature verification.
 app.use('/api/webhooks/stripe', webhookRouter);
 
 // Common middlewares: security headers, CORS, and JSON body parser.
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  credentials: true,
+  origin(origin, callback) {
+    // Requests such as health checks and server-to-server calls do not send Origin.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    const error = new Error('Origin not allowed by CORS');
+    error.status = 403;
+    callback(error);
+  },
+}));
 app.use(express.json({ limit: '1mb' }));
 
 // Routes
@@ -51,7 +69,7 @@ const port = process.env.PORT || 4000;
 
 async function start() {
   await connectMongo(process.env.MONGO_URI);
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`✅ medkit-backend listening on :${port}`);
   });
 }

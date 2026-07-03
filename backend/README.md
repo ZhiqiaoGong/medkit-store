@@ -69,8 +69,13 @@ REDIS_URL=redis://localhost:6379
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 CLIENT_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000
 JWT_SECRET=your_strong_random_secret
 ```
+
+`CLIENT_URL` is the single public frontend URL used for Stripe redirects.
+`ALLOWED_ORIGINS` is a comma-separated browser allowlist and may contain both
+local and deployed frontend origins during development.
 
 ### 3. Install and run
 
