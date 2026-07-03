@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AuthDialog } from "@/components/auth-dialog";
+import { clearSession, useSession } from "@/lib/session";
 import type { Product, Quote } from "@/lib/types";
 
 interface KitConfiguratorProps {
@@ -47,6 +49,10 @@ export function KitConfigurator({
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const { token: authToken, email: authEmail } = useSession();
 
   const selectedProducts = useMemo(
     () =>
@@ -54,14 +60,24 @@ export function KitConfigurator({
     [products, quantities],
   );
 
-  useEffect(() => {
+  const orderPayload = useMemo(() => {
     const selected = selectedProducts.map((product) => ({
       sku: product.sku,
       quantity: quantities[product.sku],
       type: product.type,
     }));
+    return {
+      bases: selected
+        .filter((item) => item.type === "BASE")
+        .map(({ sku, quantity }) => ({ sku, quantity })),
+      addons: selected
+        .filter((item) => item.type === "ADDON")
+        .map(({ sku, quantity }) => ({ sku, quantity })),
+    };
+  }, [quantities, selectedProducts]);
 
-    if (selected.length === 0) {
+  useEffect(() => {
+    if (selectedProducts.length === 0) {
       return;
     }
 
@@ -74,14 +90,7 @@ export function KitConfigurator({
         const response = await fetch(`${apiBaseUrl}/api/quote`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bases: selected
-              .filter((item) => item.type === "BASE")
-              .map(({ sku, quantity }) => ({ sku, quantity })),
-            addons: selected
-              .filter((item) => item.type === "ADDON")
-              .map(({ sku, quantity }) => ({ sku, quantity })),
-          }),
+          body: JSON.stringify(orderPayload),
           signal: controller.signal,
         });
         const result = await response.json();
@@ -103,7 +112,76 @@ export function KitConfigurator({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [apiBaseUrl, quantities, selectedProducts]);
+  }, [apiBaseUrl, orderPayload, selectedProducts.length]);
+
+  const beginCheckout = useCallback(
+    async (token: string) => {
+      if (!quote || selectedProducts.length === 0) return;
+      setCheckoutError(null);
+      setIsCheckingOut(true);
+
+      try {
+        const orderResponse = await fetch(`${apiBaseUrl}/api/orders`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(orderPayload),
+        });
+        const order = (await orderResponse.json()) as {
+          _id?: string;
+          error?: string;
+        };
+        if (!orderResponse.ok || !order._id) {
+          if (orderResponse.status === 401) {
+            clearSession();
+            setIsAuthOpen(true);
+          }
+          throw new Error(order.error ?? "Unable to create your order");
+        }
+
+        const checkoutResponse = await fetch(
+          `${apiBaseUrl}/api/orders/${order._id}/checkout`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const checkout = (await checkoutResponse.json()) as {
+          url?: string;
+          error?: string;
+        };
+        if (!checkoutResponse.ok || !checkout.url) {
+          throw new Error(checkout.error ?? "Unable to start secure checkout");
+        }
+
+        window.location.assign(checkout.url);
+      } catch (checkoutFailure) {
+        setCheckoutError(
+          checkoutFailure instanceof Error
+            ? checkoutFailure.message
+            : "Unable to start secure checkout",
+        );
+        setIsCheckingOut(false);
+      }
+    },
+    [apiBaseUrl, orderPayload, quote, selectedProducts.length],
+  );
+
+  function handleCheckout() {
+    if (!authToken) {
+      setCheckoutError("Sign in or create an account to continue.");
+      setIsAuthOpen(true);
+      return;
+    }
+    void beginCheckout(authToken);
+  }
+
+  function handleSignOut() {
+    clearSession();
+    setCheckoutError(null);
+  }
 
   function setQuantity(product: Product, nextQuantity: number) {
     const safeQuantity = Math.max(0, Math.min(nextQuantity, available(product)));
@@ -127,8 +205,12 @@ export function KitConfigurator({
         <nav aria-label="Primary navigation">
           <a href="#builder">Build a kit</a>
           <a href="#how-it-works">How it works</a>
-          <button className="text-button" type="button">
-            Sign in
+          <button
+            className="text-button"
+            type="button"
+            onClick={authToken ? handleSignOut : () => setIsAuthOpen(true)}
+          >
+            {authToken ? `${authEmail ?? "Account"} · Sign out` : "Sign in"}
           </button>
         </nav>
       </header>
@@ -221,6 +303,9 @@ export function KitConfigurator({
             {quoteError && selectedProducts.length > 0 ? (
               <p className="quote-error">{quoteError}</p>
             ) : null}
+            {checkoutError ? (
+              <p className="quote-error">{checkoutError}</p>
+            ) : null}
 
             <div className="summary-total">
               <span>Estimated total</span>
@@ -236,14 +321,24 @@ export function KitConfigurator({
             <button
               className="checkout-button"
               type="button"
-              disabled={!quote || isQuoting || selectedProducts.length === 0}
+              disabled={
+                !quote ||
+                isQuoting ||
+                isCheckingOut ||
+                selectedProducts.length === 0
+              }
+              onClick={handleCheckout}
             >
-              {isQuoting ? "Updating quote…" : "Continue to checkout"}
+              {isCheckingOut
+                ? "Opening secure checkout…"
+                : isQuoting
+                  ? "Updating quote…"
+                  : "Continue to checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <div className="secure-note">
               <span aria-hidden="true">◇</span>
-              Checkout and account flow are the next milestone
+              Secure payment is handled by Stripe
             </div>
           </aside>
         </div>
@@ -257,6 +352,14 @@ export function KitConfigurator({
           <ProcessStep number="03" title="Be ready" text="Check out securely and keep your kit ready for the moments that matter." />
         </div>
       </section>
+      <AuthDialog
+        apiBaseUrl={apiBaseUrl}
+        open={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onAuthenticated={() => {
+          setCheckoutError(null);
+        }}
+      />
     </main>
   );
 }

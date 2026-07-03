@@ -8,8 +8,11 @@ Next.js frontend for configuring medical kits against the existing Express API.
 - Interactive BASE and ADDON selection in a Client Component
 - Debounced live quotes from `POST /api/quote`
 - Responsive product cards, inventory state, and order summary
+- Register and sign-in flow backed by JWT authentication
+- Authenticated order creation and Stripe Checkout redirect
+- Success and cancellation pages with live order status
 
-Authentication, order creation, and Stripe redirect are intentionally reserved for the next milestone.
+The frontend stores the API JWT in local storage for this standalone-client milestone. A production deployment should move session handling to secure, HTTP-only cookies.
 
 ## Run locally
 

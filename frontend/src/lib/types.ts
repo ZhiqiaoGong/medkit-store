@@ -29,3 +29,21 @@ export interface Quote {
   addons: QuoteLine[];
   total: number;
 }
+
+export interface OrderItem {
+  sku: string;
+  name: string;
+  type: ProductType;
+  price: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  _id: string;
+  items: OrderItem[];
+  total: number;
+  currency: string;
+  status: "pending" | "paid" | "cancelled";
+  createdAt: string;
+}
