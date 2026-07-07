@@ -9,6 +9,49 @@ import { reserveStock, releaseStock, invalidateStockCache } from '../lib/invento
 
 const router = Router();
 
+async function syncOrderWithStripeSession(order) {
+  if (!order.stripeSessionId || order.status !== 'pending') return order;
+
+  const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+  const isPaid = session.payment_status === 'paid' || session.status === 'complete';
+  const isExpired = session.status === 'expired';
+
+  if (isPaid) {
+    const paidOrder = await Order.findOneAndUpdate(
+      {
+        _id: order._id,
+        status: 'pending',
+        inventoryReserved: true,
+        stripeSessionId: session.id,
+      },
+      { $set: { status: 'paid' } },
+      { new: true }
+    );
+    return paidOrder || await Order.findById(order._id);
+  }
+
+  if (isExpired) {
+    const cancelledOrder = await Order.findOneAndUpdate(
+      {
+        _id: order._id,
+        status: 'pending',
+        inventoryReserved: true,
+        stripeSessionId: session.id,
+      },
+      { $set: { status: 'cancelled', inventoryReserved: false } }
+    );
+
+    if (cancelledOrder) {
+      await releaseStock(cancelledOrder.items);
+      await invalidateStockCache(cancelledOrder.items);
+    }
+
+    return await Order.findById(order._id);
+  }
+
+  return order;
+}
+
 // POST /api/orders — snapshot prices and persist a new order.
 router.post('/', requireAuth, validate(orderCreateSchema), async (req, res, next) => {
   try {
@@ -127,6 +170,22 @@ router.get('/', requireAuth, async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(50);
     res.json(orders);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/orders/:id/refresh-payment — reconcile a pending order with Stripe.
+router.post('/:id/refresh-payment', requireAuth, async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.userId.toString() !== req.user.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const syncedOrder = await syncOrderWithStripeSession(order);
+    res.json(syncedOrder);
   } catch (err) {
     next(err);
   }

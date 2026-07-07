@@ -25,6 +25,7 @@ export function CheckoutResult({
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadOrder = useCallback(async () => {
     const token = window.localStorage.getItem(TOKEN_KEY);
@@ -59,6 +60,42 @@ export function CheckoutResult({
       setIsLoading(false);
     }
   }, [apiBaseUrl, orderId]);
+
+  const refreshPayment = useCallback(async () => {
+    const token = window.localStorage.getItem(TOKEN_KEY);
+    if (!orderId || !token) {
+      await loadOrder();
+      return;
+    }
+
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/orders/${orderId}/refresh-payment`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+      );
+      const result = (await response.json()) as Order & { error?: string };
+      if (!response.ok) {
+        if (response.status === 401) clearSession();
+        throw new Error(result.error ?? "Unable to refresh this order");
+      }
+      setOrder(result);
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to refresh this order",
+      );
+    } finally {
+      setIsRefreshing(false);
+      setIsLoading(false);
+    }
+  }, [apiBaseUrl, loadOrder, orderId]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void loadOrder(), 0);
@@ -121,9 +158,17 @@ export function CheckoutResult({
           <Link className="primary-link" href="/">
             Back to kit builder
           </Link>
+          <Link className="secondary-link" href="/orders">
+            View my orders
+          </Link>
           {!cancelled && order?.status === "pending" ? (
-            <button className="text-button" type="button" onClick={() => void loadOrder()}>
-              Check again
+            <button
+              className="text-button"
+              disabled={isRefreshing}
+              type="button"
+              onClick={() => void refreshPayment()}
+            >
+              {isRefreshing ? "Checking…" : "Check again"}
             </button>
           ) : null}
         </div>

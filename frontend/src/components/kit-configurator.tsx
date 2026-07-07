@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthDialog } from "@/components/auth-dialog";
 import { clearSession, useSession } from "@/lib/session";
@@ -52,7 +53,7 @@ export function KitConfigurator({
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const { token: authToken, email: authEmail } = useSession();
+  const { token: authToken } = useSession();
 
   const selectedProducts = useMemo(
     () =>
@@ -205,13 +206,24 @@ export function KitConfigurator({
         <nav aria-label="Primary navigation">
           <a href="#builder">Build a kit</a>
           <a href="#how-it-works">How it works</a>
-          <button
-            className="text-button"
-            type="button"
-            onClick={authToken ? handleSignOut : () => setIsAuthOpen(true)}
-          >
-            {authToken ? `${authEmail ?? "Account"} · Sign out` : "Sign in"}
-          </button>
+          {authToken ? (
+            <>
+              <Link className="account-link" href="/orders">
+                My orders
+              </Link>
+              <button className="text-button" type="button" onClick={handleSignOut}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+            >
+              Sign in
+            </button>
+          )}
         </nav>
       </header>
 

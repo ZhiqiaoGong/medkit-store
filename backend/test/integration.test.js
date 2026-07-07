@@ -104,6 +104,10 @@ async function createWebhookOrder(label, quantity) {
   return { order, items, sessionId, sku };
 }
 
+function userIdFromToken(token) {
+  return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).userId;
+}
+
 before(async () => {
   await mongoose.connect(mongoUrl.toString());
   server = await new Promise(resolve => {
@@ -234,6 +238,42 @@ test('orders enforce totals, ownership, and checkout authorization', async () =>
     token: otherUserToken,
   });
   assert.equal(otherCheckout.status, 403);
+});
+
+test('order payment refresh reconciles a paid Stripe checkout session', async () => {
+  const { order, sessionId } = await createWebhookOrder('refresh-paid', 1);
+  await Order.updateOne(
+    { _id: order._id },
+    { $set: { userId: userIdFromToken(userToken) } }
+  );
+
+  const originalRetrieve = stripe.checkout.sessions.retrieve;
+  stripe.checkout.sessions.retrieve = async (id) => ({
+    id,
+    object: 'checkout.session',
+    payment_status: 'paid',
+    status: 'complete',
+  });
+
+  try {
+    const forbidden = await request(`/api/orders/${order._id}/refresh-payment`, {
+      method: 'POST',
+      token: otherUserToken,
+    });
+    assert.equal(forbidden.status, 403);
+
+    const refreshed = await request(`/api/orders/${order._id}/refresh-payment`, {
+      method: 'POST',
+      token: userToken,
+    });
+    assert.equal(refreshed.status, 200);
+    assert.equal(refreshed.body.status, 'paid');
+
+    const paid = await Order.findById(order._id).lean();
+    assert.equal(paid.status, 'paid');
+  } finally {
+    stripe.checkout.sessions.retrieve = originalRetrieve;
+  }
 });
 
 test('duplicate SKUs are merged before checking stock', async () => {
