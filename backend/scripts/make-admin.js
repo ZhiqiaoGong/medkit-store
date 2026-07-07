@@ -9,7 +9,7 @@ if (!email) {
   process.exit(1);
 }
 
-await mongoose.connect(process.env.MONGO_URI);
+await mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI);
 
 const user = await User.findOneAndUpdate(
   { email },

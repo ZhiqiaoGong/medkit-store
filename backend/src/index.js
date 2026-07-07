@@ -12,10 +12,11 @@ import quoteRouter from './api/quote.js';
 import ordersRouter from './api/orders.js';
 import webhookRouter from './api/webhook.js';
 import authRouter from './api/auth.js';
+import { seedSampleProductsOnBoot } from './lib/seed-products.js';
 
 export const app = express();
 
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl)
   .split(',')
   .map(origin => origin.trim())
@@ -68,7 +69,8 @@ app.use((_req, res) => {
 const port = process.env.PORT || 4000;
 
 async function start() {
-  await connectMongo(process.env.MONGO_URI);
+  await connectMongo(process.env.MONGO_URI || process.env.MONGODB_URI);
+  await seedSampleProductsOnBoot();
   app.listen(port, '0.0.0.0', () => {
     console.log(`✅ medkit-backend listening on :${port}`);
   });

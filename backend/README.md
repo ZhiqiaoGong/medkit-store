@@ -70,18 +70,26 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 CLIENT_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
+AUTO_SEED_PRODUCTS=true
 JWT_SECRET=your_strong_random_secret
 ```
+
+`MONGODB_URI` is also supported as an alias for `MONGO_URI`, and `FRONTEND_URL`
+is supported as a fallback for `CLIENT_URL` when deploying to platforms that use
+that naming convention.
 
 `CLIENT_URL` is the single public frontend URL used for Stripe redirects.
 `ALLOWED_ORIGINS` is a comma-separated browser allowlist and may contain both
 local and deployed frontend origins during development.
+When `AUTO_SEED_PRODUCTS` is not set to `false`, an empty products collection is
+seeded with demo products on startup. Existing products are never deleted or
+overwritten by the startup seed.
 
 ### 3. Install and run
 
 ```bash
 npm install
-npm run seed        # insert sample products
+npm run seed        # upsert sample products without deleting existing products
 npm run dev         # development with hot reload
 ```
 
@@ -250,5 +258,5 @@ npm test
 | `npm run dev` | Start with nodemon (hot reload) |
 | `npm start` | Production start |
 | `npm test` | Run the isolated integration test suite |
-| `npm run seed` | Seed sample products into MongoDB |
+| `npm run seed` | Upsert sample products into MongoDB without deleting existing products |
 | `npm run make-admin <email>` | Promote a registered user to admin |
