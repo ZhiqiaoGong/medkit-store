@@ -197,7 +197,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
                 </div>
 
                 <div className="order-actions">
-                  <Link className="secondary-link" href={`/success?orderId=${order._id}`}>
+                  <Link className="secondary-link" href={`/orders/${order._id}`}>
                     View details
                   </Link>
                   {order.status === "pending" ? (

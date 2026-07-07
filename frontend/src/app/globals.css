@@ -883,6 +883,14 @@ a {
   padding: clamp(24px, 4vw, 38px);
 }
 
+.order-detail-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(7, 34, 33, 0.1);
+  padding: clamp(28px, 5vw, 52px);
+}
+
 .order-card-header,
 .order-item,
 .order-actions {
@@ -901,6 +909,23 @@ a {
   font-weight: 400;
   letter-spacing: -0.05em;
   margin: 8px 0 0;
+}
+
+.order-detail-card h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(44px, 7vw, 76px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+  margin: 12px 0 0;
+}
+
+.order-status-copy {
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.65;
+  margin: 24px 0 0;
+  max-width: 720px;
 }
 
 .status-pill {
@@ -956,6 +981,14 @@ a {
   margin: 0;
 }
 
+.detail-meta {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.7fr);
+}
+
+.detail-meta dd {
+  overflow-wrap: anywhere;
+}
+
 .order-items {
   display: grid;
   gap: 12px;
@@ -982,6 +1015,64 @@ a {
   justify-content: flex-start;
   margin-top: 24px;
   padding-top: 24px;
+}
+
+.detail-lines {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.detail-line {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(80px, 0.45fr));
+  padding: 18px 20px;
+}
+
+.detail-line + .detail-line {
+  border-top: 1px solid var(--line);
+}
+
+.detail-line-heading {
+  background: rgba(16, 42, 42, 0.04);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.detail-line > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-line span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.detail-total {
+  align-items: end;
+  display: flex;
+  justify-content: flex-end;
+  gap: 22px;
+  margin-top: 28px;
+}
+
+.detail-total span {
+  color: var(--ink-soft);
+  font-weight: 900;
+}
+
+.detail-total strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
 }
 
 .how-it-works {
@@ -1079,7 +1170,12 @@ a {
   .order-card-header,
   .order-item,
   .order-actions { align-items: stretch; flex-direction: column; }
-  .order-meta { grid-template-columns: 1fr; }
+  .order-meta,
+  .detail-meta { grid-template-columns: 1fr; }
+  .detail-line,
+  .detail-line-heading { grid-template-columns: 1fr; }
+  .detail-line-heading { display: none; }
+  .detail-total { justify-content: space-between; }
 }
 
 @media (prefers-reduced-motion: reduce) {
