@@ -145,12 +145,31 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
               </span>
             </div>
 
-            <p className="order-status-copy">{statusCopy(order.status)}</p>
+            <section className="order-status-panel">
+              <div>
+                <span className="eyebrow">Payment status</span>
+                <p>{statusCopy(order.status)}</p>
+              </div>
+              {order.status === "pending" ? (
+                <button
+                  className="text-button"
+                  disabled={isRefreshing}
+                  type="button"
+                  onClick={() => void refreshPayment()}
+                >
+                  {isRefreshing ? "Checking…" : "Check again"}
+                </button>
+              ) : null}
+            </section>
 
             <dl className="order-meta detail-meta">
               <div>
                 <dt>Full order ID</dt>
                 <dd>{order._id}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd className="capitalize-text">{order.status}</dd>
               </div>
               <div>
                 <dt>Placed</dt>
@@ -194,16 +213,6 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
               <Link className="secondary-link" href="/orders">
                 Back to my orders
               </Link>
-              {order.status === "pending" ? (
-                <button
-                  className="text-button"
-                  disabled={isRefreshing}
-                  type="button"
-                  onClick={() => void refreshPayment()}
-                >
-                  {isRefreshing ? "Checking…" : "Check again"}
-                </button>
-              ) : null}
             </div>
           </article>
         ) : null}

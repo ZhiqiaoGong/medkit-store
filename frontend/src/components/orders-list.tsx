@@ -26,7 +26,6 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshingOrderId, setRefreshingOrderId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
@@ -70,39 +69,6 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
     const timer = window.setTimeout(() => void loadOrders(), 0);
     return () => window.clearTimeout(timer);
   }, [loadOrders]);
-
-  async function refreshPayment(orderId: string) {
-    if (!token) return;
-
-    setRefreshingOrderId(orderId);
-    setError(null);
-    try {
-      const response = await fetch(
-        `${apiBaseUrl}/api/orders/${orderId}/refresh-payment`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        },
-      );
-      const result = (await response.json()) as Order & { error?: string };
-      if (!response.ok) {
-        if (response.status === 401) clearSession();
-        throw new Error(result.error ?? "Unable to refresh this order");
-      }
-      setOrders((current) =>
-        current.map((order) => (order._id === result._id ? result : order)),
-      );
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Unable to refresh this order",
-      );
-    } finally {
-      setRefreshingOrderId(null);
-    }
-  }
 
   return (
     <main className="orders-page">
@@ -167,7 +133,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
                   </span>
                 </div>
 
-                <dl className="order-meta">
+                <dl className="order-meta order-summary-meta">
                   <div>
                     <dt>Date</dt>
                     <dd>{dateFormatter.format(new Date(order.createdAt))}</dd>
@@ -182,34 +148,16 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
                   </div>
                 </dl>
 
-                <div className="order-items">
-                  {order.items.map((item) => (
-                    <div className="order-item" key={item.sku}>
-                      <div>
-                        <strong>{item.name}</strong>
-                        <span>
-                          {item.sku} · Qty {item.quantity}
-                        </span>
-                      </div>
-                      <strong>{money.format(item.subtotal)}</strong>
-                    </div>
-                  ))}
-                </div>
+                <p className="order-card-summary">
+                  {order.items.length === 1
+                    ? order.items[0].name
+                    : `${order.items[0].name} + ${order.items.length - 1} more`}
+                </p>
 
                 <div className="order-actions">
                   <Link className="secondary-link" href={`/orders/${order._id}`}>
                     View details
                   </Link>
-                  {order.status === "pending" ? (
-                    <button
-                      className="text-button"
-                      disabled={refreshingOrderId === order._id}
-                      type="button"
-                      onClick={() => void refreshPayment(order._id)}
-                    >
-                      {refreshingOrderId === order._id ? "Checking…" : "Check again"}
-                    </button>
-                  ) : null}
                 </div>
               </article>
             ))}
