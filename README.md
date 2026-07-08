@@ -39,9 +39,9 @@ Deployment is split by service:
 | Component | Runtime |
 |-----------|---------|
 | Frontend | Vercel-hosted Next.js app |
-| Backend | Railway-hosted Express API |
+| Backend | Render-hosted Express API |
 | Database | MongoDB Atlas |
-| Cache | Railway Redis |
+| Cache | External Redis |
 | Payments | Stripe test mode |
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the deployment environment contract.
@@ -104,7 +104,7 @@ Production smoke test:
 
 ```bash
 cd backend
-API_BASE_URL=https://your-railway-api.example.com \
+API_BASE_URL=https://your-render-api.onrender.com \
 FRONTEND_URL=https://your-vercel-app.example.com \
 npm run smoke:prod
 ```
@@ -158,14 +158,25 @@ load tests; checkout oversell protection is covered by the integration suite.
 ## Production Smoke Test
 
 The production smoke script validates a deployed API without requiring direct
-access to Railway, Vercel, MongoDB Atlas, Redis, or Stripe dashboards.
+access to Render, Vercel, MongoDB Atlas, Redis, or Stripe dashboards.
 
 ```bash
 cd backend
-API_BASE_URL=https://your-railway-api.example.com \
+API_BASE_URL=https://your-render-api.onrender.com \
 FRONTEND_URL=https://your-vercel-app.example.com \
 npm run smoke:prod
 ```
+
+Latest verified deployment smoke test: 2026-07-07
+
+| Check | Result |
+|-------|--------|
+| Vercel frontend `https://medkit-store.vercel.app` | `200` |
+| Render API `https://medical-kit-store-api.onrender.com/ready` | `200` |
+| Active product catalog | passed |
+| Quote creation | passed |
+| Temporary user registration | passed |
+| Authenticated order creation | passed |
 
 It checks:
 
