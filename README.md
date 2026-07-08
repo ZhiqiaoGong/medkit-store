@@ -155,6 +155,30 @@ npm run load:test -- --url http://127.0.0.1:4011 --scenario order-create --durat
 local or staging database. Live Stripe Checkout is intentionally excluded from
 load tests; checkout oversell protection is covered by the integration suite.
 
+## Production Load Sanity Check
+
+The deployed API was also verified with a deliberately light quote-only load
+run on Render's free tier. This is not a full production stress test; it avoids
+write-heavy endpoints and Stripe Checkout so it does not flood the free backend,
+database, or Redis plan.
+
+Command:
+
+```bash
+cd backend
+npm run load:test -- \
+  --url https://medical-kit-store-api.onrender.com \
+  --scenario quote \
+  --duration 10 \
+  --concurrency 3
+```
+
+Latest verified run: 2026-07-07
+
+| Scenario | Duration | Concurrency | Requests | Failure rate | RPS | P50 | P95 | Max |
+|----------|----------|-------------|----------|--------------|-----|-----|-----|-----|
+| Production quote sanity | 10s | 3 | 482 | 0% | 48.02 | 60.44 ms | 77.43 ms | 203.53 ms |
+
 ## Production Smoke Test
 
 The production smoke script validates a deployed API without requiring direct

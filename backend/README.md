@@ -294,6 +294,11 @@ Run a load test:
 npm run load:test -- --url http://127.0.0.1:4000 --scenario quote --duration 30 --concurrency 20
 ```
 
+For free-tier deployed services, keep production checks light and quote-only.
+Avoid `order-create` against production unless the database is disposable,
+because it writes persistent users/orders and can consume backend, database, and
+Redis quotas quickly.
+
 Supported scenarios:
 
 | Scenario | What it exercises |
