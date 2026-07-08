@@ -100,6 +100,15 @@ npm run benchmark -- --url http://127.0.0.1:4000 --iterations 200 --warmup 20
 npm run load:test -- --url http://127.0.0.1:4000 --scenario quote --duration 30 --concurrency 20
 ```
 
+Production smoke test:
+
+```bash
+cd backend
+API_BASE_URL=https://your-railway-api.example.com \
+FRONTEND_URL=https://your-vercel-app.example.com \
+npm run smoke:prod
+```
+
 Frontend:
 
 ```bash
@@ -145,6 +154,32 @@ npm run load:test -- --url http://127.0.0.1:4011 --scenario order-create --durat
 `order-create` writes persistent test orders, so run it against a disposable
 local or staging database. Live Stripe Checkout is intentionally excluded from
 load tests; checkout oversell protection is covered by the integration suite.
+
+## Production Smoke Test
+
+The production smoke script validates a deployed API without requiring direct
+access to Railway, Vercel, MongoDB Atlas, Redis, or Stripe dashboards.
+
+```bash
+cd backend
+API_BASE_URL=https://your-railway-api.example.com \
+FRONTEND_URL=https://your-vercel-app.example.com \
+npm run smoke:prod
+```
+
+It checks:
+
+- frontend HTML returns `200` when `FRONTEND_URL` is provided
+- backend `/ready` reports MongoDB and Redis as up
+- active product catalog is not empty
+- `POST /api/quote` returns a positive total
+- temporary smoke user registration returns a JWT
+- authenticated `POST /api/orders` creates an order matching the quote
+
+The script writes a temporary user and order, so run it against production only
+when test-mode data is acceptable. Stripe Checkout session creation is skipped
+by default; add `-- --checkout` only when Stripe test keys and redirect URLs are
+configured and you want to verify the Checkout redirect path.
 
 ## Backend Correctness Focus
 

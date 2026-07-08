@@ -315,5 +315,6 @@ HTTP checkout route is exercised concurrently.
 | `npm test` | Run the isolated integration test suite |
 | `npm run benchmark` | Run cache-focused latency benchmarks against a live API |
 | `npm run load:test` | Run configurable load scenarios against a live API |
+| `npm run smoke:prod` | Run deployed API smoke checks using `API_BASE_URL` |
 | `npm run seed` | Upsert sample products into MongoDB without deleting existing products |
 | `npm run make-admin <email>` | Promote a registered user to admin |
