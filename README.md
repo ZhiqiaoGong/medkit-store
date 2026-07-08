@@ -2,12 +2,39 @@
 
 [![CI](https://github.com/ZhiqiaoGong/medkit-store/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhiqiaoGong/medkit-store/actions/workflows/ci.yml)
 
-Full-stack medical kit commerce app with an inventory-safe checkout flow.
+Production-style full-stack commerce system for configuring and checking out
+medical kits with inventory-safe order flow, Stripe Checkout, CI validation,
+load-test evidence, and protected production observability.
 
-The project is built as a realistic storefront plus API system: customers can
-configure medical kits, get live quotes, create authenticated orders, and enter
-Stripe Checkout while the backend protects inventory from overselling under
-concurrent demand.
+Customers can configure kits, get live Redis-backed quotes, create
+authenticated orders, and enter Stripe Checkout. The backend is designed around
+correctness under concurrent demand: stock is reserved atomically before
+checkout, Stripe webhooks are idempotent, and integration tests verify that
+simultaneous checkout attempts cannot oversell low-stock inventory.
+
+## Live System
+
+| Surface | Link |
+|---------|------|
+| Storefront | [medkit-store.vercel.app](https://medkit-store.vercel.app) |
+| API readiness | [medical-kit-store-api.onrender.com/ready](https://medical-kit-store-api.onrender.com/ready) |
+| CI workflow | [GitHub Actions](https://github.com/ZhiqiaoGong/medkit-store/actions/workflows/ci.yml) |
+
+## Preview
+
+| Storefront | Kit builder | Orders |
+|------------|-------------|--------|
+| ![MedKit Store storefront](docs/assets/medkit-storefront.jpg) | ![MedKit kit builder](docs/assets/medkit-builder.jpg) | ![MedKit orders page](docs/assets/medkit-orders.jpg) |
+
+## Engineering Evidence
+
+| Area | Evidence |
+|------|----------|
+| Concurrency correctness | Integration tests cover atomic stock reservation and concurrent checkout oversell protection |
+| Payments reliability | Stripe checkout webhooks are idempotent for completed and expired sessions |
+| Local load testing | Quote scenario handled `27,717` requests in 30s at `0%` failure, `p95 45.82 ms` |
+| Production sanity load | Render quote-only check handled `482` requests at `0%` failure, `p95 77.43 ms` |
+| Production readiness | `/ready` checks MongoDB and Redis; protected `/metrics` exposes request counts, status codes, route timing, and latency percentiles |
 
 ## Highlights
 
