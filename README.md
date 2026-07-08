@@ -1,5 +1,7 @@
 # MedKit Store
 
+[![CI](https://github.com/ZhiqiaoGong/medkit-store/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhiqiaoGong/medkit-store/actions/workflows/ci.yml)
+
 Full-stack medical kit commerce app with an inventory-safe checkout flow.
 
 The project is built as a realistic storefront plus API system: customers can
