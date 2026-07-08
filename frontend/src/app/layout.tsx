@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "MedKit Studio | Configure a medical kit",
   description:
     "Build a field-ready medical kit with live inventory and transparent pricing.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
