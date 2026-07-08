@@ -207,9 +207,6 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
             </div>
 
             <div className="order-actions">
-              <Link className="primary-link" href="/">
-                Build another kit
-              </Link>
               <Link className="secondary-link" href="/orders">
                 Back to my orders
               </Link>

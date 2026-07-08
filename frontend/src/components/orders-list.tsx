@@ -78,7 +78,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
           <span>MedKit Studio</span>
         </Link>
         <Link className="secondary-link" href="/">
-          Build another kit
+          Back to home
         </Link>
       </header>
 
