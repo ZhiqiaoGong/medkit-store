@@ -291,6 +291,21 @@ adding an external monitoring service:
 For public deployments, set `METRICS_TOKEN` so `/metrics` is available to you
 without exposing operational details to anonymous traffic.
 
+Production observability was verified on 2026-07-07 against the Render API:
+
+- anonymous `GET /metrics` returned `401`
+- authenticated `GET /metrics` with `METRICS_TOKEN` returned runtime request
+  counters, status-code distribution, route timing, and latency percentiles
+- the metrics response does not include request bodies, auth tokens, or
+  customer data
+
+Example verification command:
+
+```bash
+curl -H "Authorization: Bearer $METRICS_TOKEN" \
+  https://medical-kit-store-api.onrender.com/metrics
+```
+
 If a local result looks impossible, confirm the API process before trusting the
 port:
 

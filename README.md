@@ -135,6 +135,15 @@ and performance checks:
 
 `/metrics` can be protected with `METRICS_TOKEN` in deployed environments.
 
+Latest verified production observability check: 2026-07-07
+
+| Check | Result |
+|-------|--------|
+| Render API `/metrics` without token | `401` |
+| Render API `/metrics` with `METRICS_TOKEN` | passed |
+| Metrics payload includes request counters, status codes, route timing, and latency percentiles | passed |
+| Metrics payload excludes request bodies, auth tokens, and customer data | passed by implementation |
+
 ## Performance Snapshot
 
 Local run on 2026-07-07 with Node.js v24.4.1, macOS arm64, local MongoDB,
