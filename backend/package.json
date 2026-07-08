@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "nodemon --watch src --exec node src/index.js",
     "start": "node src/index.js",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "benchmark": "node scripts/benchmark.js",
+    "load:test": "node scripts/load-test.js",
     "seed": "node scripts/seed.js",
     "make-admin": "node scripts/make-admin.js"
   },

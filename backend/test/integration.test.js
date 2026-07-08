@@ -391,6 +391,71 @@ test('concurrent reservations cannot oversell stock', async () => {
   assert.equal(released.stock.reserved, 0);
 });
 
+test('concurrent checkout requests reserve only available inventory', async () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const sku = `TEST-CHECKOUT-RACE-${suffix}`;
+  await Product.create({
+    name: 'Checkout Race Kit',
+    sku,
+    type: 'BASE',
+    price: 100,
+    stock: { total: 3, reserved: 0 },
+  });
+
+  const orderResponses = await Promise.all(
+    Array.from({ length: 8 }, () => request('/api/orders', {
+      method: 'POST',
+      token: userToken,
+      body: { bases: [{ sku, quantity: 1 }] },
+    }))
+  );
+  assert.equal(orderResponses.every(response => response.status === 201), true);
+
+  const originalCreate = stripe.checkout.sessions.create;
+  stripe.checkout.sessions.create = async ({ metadata }) => ({
+    id: `cs_test_race_${metadata.orderId}`,
+    object: 'checkout.session',
+    url: `https://checkout.stripe.test/${metadata.orderId}`,
+  });
+
+  try {
+    const checkoutResponses = await Promise.all(orderResponses.map(response =>
+      request(`/api/orders/${response.body._id}/checkout`, {
+        method: 'POST',
+        token: userToken,
+      })
+    ));
+
+    const successes = checkoutResponses.filter(response => response.status === 200);
+    const stockFailures = checkoutResponses.filter(response => response.status === 400);
+    assert.equal(successes.length, 3);
+    assert.equal(stockFailures.length, 5);
+    assert.equal(
+      stockFailures.every(response => response.body.error.includes('Insufficient stock')),
+      true
+    );
+
+    const product = await Product.findOne({ sku }).lean();
+    assert.equal(product.stock.reserved, 3);
+
+    const successfulOrderIds = successes.map(response =>
+      response.body.sessionId.replace('cs_test_race_', '')
+    );
+    const successfulOrders = await Order.find({ _id: { $in: successfulOrderIds } }).lean();
+    assert.equal(successfulOrders.length, 3);
+    assert.equal(successfulOrders.every(order => order.inventoryReserved), true);
+
+    const failedOrderIds = orderResponses
+      .map(response => response.body._id)
+      .filter(id => !successfulOrderIds.includes(id));
+    const failedOrders = await Order.find({ _id: { $in: failedOrderIds } }).lean();
+    assert.equal(failedOrders.length, 5);
+    assert.equal(failedOrders.every(order => order.inventoryReserved === false), true);
+  } finally {
+    stripe.checkout.sessions.create = originalCreate;
+  }
+});
+
 test('completed webhook marks an order paid without double-counting stock', async () => {
   const { order, items, sessionId, sku } = await createWebhookOrder('completed', 2);
 

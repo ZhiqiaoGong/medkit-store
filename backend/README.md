@@ -251,6 +251,61 @@ MongoDB and Redis must be running. Tests use a temporary MongoDB database, clean
 npm test
 ```
 
+The integration suite includes concurrency checks for the inventory path:
+
+- direct concurrent reservations can only reserve available stock
+- concurrent HTTP checkout requests cannot oversell a low-stock SKU
+- failed checkout attempts reset `inventoryReserved` so the order is not left stuck
+- completed and expired Stripe webhooks are idempotent and do not double-count stock
+
+If a local result looks impossible, confirm the API process before trusting the
+port:
+
+```bash
+lsof -nP -iTCP:4000 -sTCP:LISTEN
+```
+
+## Performance Checks
+
+The backend includes zero-dependency Node scripts for repeatable benchmark and
+load-test runs against a live local or deployed API. Start MongoDB, Redis, and
+the backend first, then seed products if the database is empty.
+
+```bash
+npm run dev
+npm run seed
+```
+
+Run a short cache-focused benchmark:
+
+```bash
+npm run benchmark -- --url http://127.0.0.1:4000 --iterations 200 --warmup 20
+```
+
+The benchmark prints JSON with request counts, success counts, RPS, min, p50,
+p95, max, and status counts for:
+
+- `product-cache-hit` — repeated `GET /api/products/:sku`
+- `quote-cache-hit` — repeated `POST /api/quote` with the same cart
+
+Run a load test:
+
+```bash
+npm run load:test -- --url http://127.0.0.1:4000 --scenario quote --duration 30 --concurrency 20
+```
+
+Supported scenarios:
+
+| Scenario | What it exercises |
+|----------|-------------------|
+| `quote` | Price calculation, product lookup, Redis quote cache |
+| `order-create` | Authenticated order creation and stock validation without hitting Stripe |
+| `mixed-read` | Product list and cached product detail reads |
+
+These scripts intentionally avoid live Stripe Checkout calls. Checkout
+oversell protection is verified in `npm test`, where Stripe is stubbed and the
+HTTP checkout route is exercised concurrently.
+
 ## Scripts
 
 | Command | Description |
@@ -258,5 +313,7 @@ npm test
 | `npm run dev` | Start with nodemon (hot reload) |
 | `npm start` | Production start |
 | `npm test` | Run the isolated integration test suite |
+| `npm run benchmark` | Run cache-focused latency benchmarks against a live API |
+| `npm run load:test` | Run configurable load scenarios against a live API |
 | `npm run seed` | Upsert sample products into MongoDB without deleting existing products |
 | `npm run make-admin <email>` | Promote a registered user to admin |
