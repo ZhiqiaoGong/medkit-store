@@ -14,6 +14,7 @@ REST API backend for medical kit product management and online checkout. Built w
 | Auth | JWT + bcrypt |
 | Validation | Zod |
 | Security | Helmet, CORS, express-rate-limit |
+| Observability | Request IDs, JSON request logs, in-memory latency metrics |
 
 ## Project Structure
 
@@ -22,6 +23,7 @@ src/
 ├── index.js              # App entry — mounts all routes
 ├── api/
 │   ├── health.js         # Health check
+│   ├── metrics.js        # Request metrics
 │   ├── auth.js           # Register / login
 │   ├── products.js       # Product CRUD (admin only for writes)
 │   ├── quote.js          # Price quote (no persistence)
@@ -43,6 +45,7 @@ src/
 │   └── pricing.js        # Snapshot prices, stock check, build order items
 └── middlewares/
     ├── auth.js           # requireAuth / requireAdmin middleware
+    ├── observability.js  # request IDs, request logs, latency metrics
     └── validate.js       # Zod validation middleware
 scripts/
 ├── seed.js               # Seed test products
@@ -71,6 +74,9 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 CLIENT_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:3000
 AUTO_SEED_PRODUCTS=true
+REQUEST_LOGS=true
+SLOW_REQUEST_MS=500
+# METRICS_TOKEN=optional_metrics_read_token
 JWT_SECRET=your_strong_random_secret
 ```
 
@@ -126,9 +132,20 @@ Authorization: Bearer <token>
 ```
 GET /health
 GET /ready
+GET /metrics
 ```
 
 `/health` is a process liveness check. `/ready` verifies both MongoDB and Redis and returns `503` when either dependency is unavailable.
+
+`/metrics` returns process-local request counters, status-code distribution,
+latency percentiles, route-level latency, and the latest slow requests. It does
+not include request bodies, auth tokens, or customer data. Set `METRICS_TOKEN`
+to require `Authorization: Bearer <token>` or `x-metrics-token: <token>`.
+
+Every response includes an `x-request-id` header. If the client sends
+`x-request-id`, the API preserves it; otherwise it generates one. Error
+responses include the same `requestId` so production logs can be matched to a
+customer-facing failure.
 
 ### Products
 
@@ -257,6 +274,22 @@ The integration suite includes concurrency checks for the inventory path:
 - concurrent HTTP checkout requests cannot oversell a low-stock SKU
 - failed checkout attempts reset `inventoryReserved` so the order is not left stuck
 - completed and expired Stripe webhooks are idempotent and do not double-count stock
+- observability middleware assigns request IDs and exposes request metrics
+
+## Production Readiness
+
+The backend includes lightweight production-readiness instrumentation without
+adding an external monitoring service:
+
+- `x-request-id` response headers for request tracing
+- structured JSON request logs controlled by `REQUEST_LOGS`
+- centralized 5xx error logs with matching request IDs
+- `/health` for liveness and `/ready` for MongoDB/Redis readiness
+- `/metrics` for aggregate request counts, status codes, latency percentiles,
+  route timing, and recent slow requests
+
+For public deployments, set `METRICS_TOKEN` so `/metrics` is available to you
+without exposing operational details to anonymous traffic.
 
 If a local result looks impossible, confirm the API process before trusting the
 port:

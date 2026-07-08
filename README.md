@@ -17,6 +17,8 @@ concurrent demand.
   and Stripe Checkout integration
 - Atomic inventory reservation before checkout session creation
 - Idempotent Stripe webhook handling for completed and expired sessions
+- Production-style request tracing, JSON request logs, readiness checks, and
+  request latency metrics
 - Integration tests that cover checkout authorization, inventory reservation,
   webhook behavior, and concurrent oversell protection
 - Repeatable benchmark and load-test scripts for API latency and throughput
@@ -119,6 +121,19 @@ npm run build
 
 If macOS rejects the native Next.js SWC binary, use the compatibility scripts in
 the frontend README.
+
+## Production Readiness
+
+The backend includes production-style observability in addition to correctness
+and performance checks:
+
+- `x-request-id` on every response, with client-provided IDs preserved
+- JSON request logs and centralized 5xx error logs for request tracing
+- `/health` for liveness and `/ready` for MongoDB/Redis dependency readiness
+- `/metrics` for in-memory request counts, status codes, latency percentiles,
+  route timing, and recent slow requests
+
+`/metrics` can be protected with `METRICS_TOKEN` in deployed environments.
 
 ## Performance Snapshot
 

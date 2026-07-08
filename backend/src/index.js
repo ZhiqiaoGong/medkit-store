@@ -13,6 +13,8 @@ import ordersRouter from './api/orders.js';
 import webhookRouter from './api/webhook.js';
 import authRouter from './api/auth.js';
 import { seedSampleProductsOnBoot } from './lib/seed-products.js';
+import metricsRouter from './api/metrics.js';
+import { logServerError, observabilityMiddleware } from './middlewares/observability.js';
 
 export const app = express();
 
@@ -21,6 +23,8 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || clientUrl)
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+
+app.use(observabilityMiddleware());
 
 // Webhook must be mounted before express.json() to preserve raw body for signature verification.
 app.use('/api/webhooks/stripe', webhookRouter);
@@ -44,6 +48,7 @@ app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use(healthRouter);
+app.use(metricsRouter);
 app.use('/api', productsRouter);
 
 app.use('/api/auth', authRouter);
@@ -51,20 +56,22 @@ app.use('/api/quote', quoteRouter);
 app.use('/api/orders', ordersRouter);
 
 // 404 handler
-app.use((_req, res) => {
-    res.status(404).json({ error: 'Not Found' });
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    requestId: req.id,
   });
-  
-  // Centralized error handler
-  app.use((err, _req, res, _next) => {
-    const status = err.status || 500;
-    if (status >= 500) console.error(err);
-    res.status(status).json({
-      error: err.message || 'Internal Server Error'
-    });
+});
+
+// Centralized error handler
+app.use((err, req, res, _next) => {
+  const status = err.status || 500;
+  logServerError(err, req, status);
+  res.status(status).json({
+    error: err.message || 'Internal Server Error',
+    requestId: req.id,
   });
-  
-  
+});
 
 const port = process.env.PORT || 4000;
 

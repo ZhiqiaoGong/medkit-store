@@ -7,6 +7,7 @@ process.env.STRIPE_SECRET_KEY ||= 'sk_test_placeholder';
 process.env.JWT_SECRET ||= 'test-jwt-secret';
 process.env.CLIENT_URL ||= 'http://localhost:3000';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_webhook_secret';
+process.env.NODE_ENV ||= 'test';
 
 if (!process.env.MONGO_URI) {
   throw new Error('MONGO_URI is required to run integration tests');
@@ -22,6 +23,7 @@ const { default: User } = await import('../src/models/User.js');
 const { reserveStock, releaseStock } = await import('../src/lib/inventory.js');
 const { redis } = await import('../src/lib/redis.js');
 const { stripe } = await import('../src/lib/stripe.js');
+const { resetRequestMetrics } = await import('../src/middlewares/observability.js');
 
 let server;
 let baseUrl;
@@ -175,6 +177,51 @@ test('health and readiness endpoints report service status', async () => {
   assert.equal(ready.status, 200);
   assert.equal(ready.body.ready, true);
   assert.deepEqual(ready.body.checks, { mongo: 'up', redis: 'up' });
+});
+
+test('observability assigns request IDs and reports request metrics', async () => {
+  resetRequestMetrics();
+
+  const health = await fetch(`${baseUrl}/health`, {
+    headers: { 'x-request-id': 'test-request-id' },
+  });
+  assert.equal(health.status, 200);
+  assert.equal(health.headers.get('x-request-id'), 'test-request-id');
+  await health.json();
+
+  const missing = await request('/missing-observability');
+  assert.equal(missing.status, 404);
+  assert.ok(missing.body.requestId);
+
+  const metrics = await request('/metrics');
+  assert.equal(metrics.status, 200);
+  assert.equal(metrics.body.requests.completed, 2);
+  assert.equal(metrics.body.requests.inFlight, 1);
+  assert.equal(metrics.body.statusCodes['200'], 1);
+  assert.equal(metrics.body.statusCodes['404'], 1);
+  assert.equal(metrics.body.methods.GET, 2);
+  assert.equal(metrics.body.routes['/health'].requests, 1);
+  assert.equal(metrics.body.routes['/missing-observability'].requests, 1);
+  assert.equal(typeof metrics.body.latencyMs.p95, 'number');
+
+  const originalMetricsToken = process.env.METRICS_TOKEN;
+  process.env.METRICS_TOKEN = 'test-metrics-token';
+  try {
+    const blocked = await request('/metrics');
+    assert.equal(blocked.status, 401);
+    assert.equal(blocked.body.error, 'Metrics token required');
+
+    const allowed = await request('/metrics', {
+      headers: { authorization: 'Bearer test-metrics-token' },
+    });
+    assert.equal(allowed.status, 200);
+  } finally {
+    if (originalMetricsToken === undefined) {
+      delete process.env.METRICS_TOKEN;
+    } else {
+      process.env.METRICS_TOKEN = originalMetricsToken;
+    }
+  }
 });
 
 test('CORS allows the configured client and rejects unknown origins', async () => {
