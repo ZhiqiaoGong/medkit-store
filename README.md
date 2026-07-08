@@ -111,6 +111,41 @@ npm run build
 If macOS rejects the native Next.js SWC binary, use the compatibility scripts in
 the frontend README.
 
+## Performance Snapshot
+
+Local run on 2026-07-07 with Node.js v24.4.1, macOS arm64, local MongoDB,
+local Redis, and the backend listening on `127.0.0.1:4011`.
+
+Benchmark command:
+
+```bash
+cd backend
+npm run benchmark -- --url http://127.0.0.1:4011 --iterations 1000 --warmup 100
+```
+
+| Benchmark | Requests | Failure rate | RPS | P50 | P95 |
+|-----------|----------|--------------|-----|-----|-----|
+| Cached product read | 1000 | 0% | 1870.61 | 0.43 ms | 0.90 ms |
+| Cached quote | 1000 | 0% | 1064.21 | 0.63 ms | 1.95 ms |
+
+Load-test commands:
+
+```bash
+npm run load:test -- --url http://127.0.0.1:4011 --scenario quote --duration 30 --concurrency 20
+npm run load:test -- --url http://127.0.0.1:4011 --scenario mixed-read --duration 30 --concurrency 20
+npm run load:test -- --url http://127.0.0.1:4011 --scenario order-create --duration 15 --concurrency 10
+```
+
+| Scenario | Duration | Concurrency | Requests | Failure rate | RPS | P50 | P95 |
+|----------|----------|-------------|----------|--------------|-----|-----|-----|
+| Quote | 30s | 20 | 27717 | 0% | 923.39 | 16.46 ms | 45.82 ms |
+| Mixed read | 30s | 20 | 30862 | 0% | 1028.37 | 13.46 ms | 45.62 ms |
+| Order create | 15s | 10 | 9586 | 0% | 638.75 | 14.16 ms | 26.00 ms |
+
+`order-create` writes persistent test orders, so run it against a disposable
+local or staging database. Live Stripe Checkout is intentionally excluded from
+load tests; checkout oversell protection is covered by the integration suite.
+
 ## Backend Correctness Focus
 
 The backend is designed around inventory correctness, not just CRUD endpoints.
