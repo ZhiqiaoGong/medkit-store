@@ -1,13 +1,14 @@
 # 无障碍审计记录 · 2026-11-02
 
-> 工具：axe-core 4.10.2，注入页面运行（非 DevTools 手点），WCAG 2.1 AA 规则集。
+> 工具：axe-core 4.10.2，注入页面运行（非 DevTools 手点），WCAG 2.1 AA 规则集；
+> 手动验收用 macOS VoiceOver + Safari。
 > 范围：前端自有的 5 个路由 + 登录弹窗。结账页由 Stripe 托管，不在可改范围内。
 
 ---
 
 ## 0. 结果一句话
 
-**axe 违规 8 处 → 0 处**，另修掉 7 处自动工具查不到、靠手动键盘测试才发现的问题，并接了 CI 守卫防回退（17 个用例）。
+**axe 违规 8 处 → 0 处**，另修掉 7 处自动工具查不到、靠手动键盘测试才发现的问题，接了 CI 守卫防回退（17 个用例），并用 VoiceOver 实测验收（六项全过）。
 
 ---
 
@@ -211,8 +212,36 @@ color-contrast (serious) x2 — Elements must meet minimum color contrast ratio 
 
 ---
 
-## 7. 还没做
+## 7. VoiceOver 实测（2026-11-03）
 
-- **读屏实测**：VoiceOver 还没完整走一遍。axe 和键盘测试覆盖不到「念出来是否通顺」
-- **只测了 Chromium**：没跑 WebKit / Firefox
+macOS VoiceOver + Safari，手动走了一遍。**六项全过，没有因此改动任何代码。**
+
+| 验收项 | 怎么测 | 结果 |
+|---|---|---|
+| skip link | 页面加载后按一次 Tab | ✅ 念「Skip to main content，链接」 |
+| landmark 结构 | `VO + U` → Landmarks | ✅ `banner` / `navigation` / `main` 平级 |
+| 标题大纲 | `VO + U` → Headings | ✅ H1 → H2 → H3 → H4 层级合理 |
+| live region 收窄 | 激活 Add 按钮，听自动播报 | ✅ 只念数量和总价，不重念整张卡片 |
+| 弹窗 `inert` | 弹窗打开后连按 `VO + →` | ✅ 光标在弹窗内循环，走不出去 |
+| 表格列名 | 单元格上按 `VO + Shift + C` | ✅ 念出对应列名（如 "Qty"） |
+
+### 过程中踩的两个坑（都是测法问题，不是代码问题）
+
+**1. Tab 跳过了整个表格。** 这是正确行为——Tab 只访问可聚焦元素，表格里一个都没有。读屏用户靠的是 VoiceOver 光标（`VO + →`），它和键盘焦点是两套独立的光标。焦点陷阱管 Tab，`inert` 管 VO 光标，所以只测 Tab 验不出 `inert`。
+
+**2. 按行走不报列名。** `VO + ↓` 念整行（"row 2 of 3, Essential First Aid Kit $39 1 $39"），这对任何表格包括原生 `<table>` 都一样。列名要按单元格走（`VO + →`）才报，或者直接用 `VO + Shift + C` 查当前单元格的列标题。
+
+### 结论：自动化的边界在哪
+
+这一趟里风险最高的那条，CI 一个字都验不了。
+
+CI 断言的是 `role="table"` 存在、4 个 `columnheader`、3 个 `row`——全绿。但「列名到底念不念得出来」属于辅助技术的运行时行为，取决于 AT 对 ARIA 的实现质量，只有戴上耳机才知道。
+
+考虑过的风险是：`display: grid` 加在 `role="row"` 上，有让部分辅助技术丢失行列关联的已知可能。实测确认 Safari + VoiceOver 下关联正常，所以保留 ARIA 角色方案，没有改成真 `<table>`。如果以后换别的 AT 发现关联断了，正确做法是换真 `<table>` + `table-layout: fixed` 还原布局。
+
+---
+
+## 8. 还没做
+
+- **只测了 Chromium（自动）和 Safari（手动）**：没跑 Firefox / NVDA / JAWS
 - **Stripe 结账页**：托管页面，改不了，也测不了
