@@ -105,7 +105,7 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
   }
 
   return (
-    <main className="orders-page">
+    <div className="orders-page">
       <header className="orders-header">
         <Link className="brand" href="/" aria-label="MedKit Studio home">
           <span className="brand-mark">M+</span>
@@ -116,7 +116,7 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
         </Link>
       </header>
 
-      <section className="orders-shell">
+      <main className="orders-shell" id="main-content">
         {!token ? (
           <div className="empty-orders">
             <h1>Sign in to view this order.</h1>
@@ -130,8 +130,14 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
           </div>
         ) : null}
 
-        {token && isLoading ? <p className="result-status">Loading order…</p> : null}
-        {error ? <p className="result-error">{error}</p> : null}
+        <p className="result-status" role="status">
+          {token && isLoading ? "Loading order…" : ""}
+        </p>
+        {error ? (
+          <p className="result-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         {order ? (
           <article className="order-detail-card">
@@ -181,22 +187,29 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
               </div>
             </dl>
 
-            <div className="detail-lines" aria-label="Order line items">
-              <div className="detail-line detail-line-heading">
-                <span>Item</span>
-                <span>Unit</span>
-                <span>Qty</span>
-                <span>Subtotal</span>
+            <div
+              aria-label="Order line items"
+              className="detail-lines"
+              role="table"
+            >
+              <div
+                className="detail-line detail-line-heading"
+                role="row"
+              >
+                <span role="columnheader">Item</span>
+                <span role="columnheader">Unit</span>
+                <span role="columnheader">Qty</span>
+                <span role="columnheader">Subtotal</span>
               </div>
               {order.items.map((item) => (
-                <div className="detail-line" key={item.sku}>
-                  <div>
+                <div className="detail-line" key={item.sku} role="row">
+                  <div role="cell">
                     <strong>{item.name}</strong>
                     <span>{item.sku}</span>
                   </div>
-                  <span>{money.format(item.price)}</span>
-                  <span>{item.quantity}</span>
-                  <strong>{money.format(item.subtotal)}</strong>
+                  <span role="cell">{money.format(item.price)}</span>
+                  <span role="cell">{item.quantity}</span>
+                  <strong role="cell">{money.format(item.subtotal)}</strong>
                 </div>
               ))}
             </div>
@@ -213,7 +226,7 @@ export function OrderDetail({ apiBaseUrl, orderId }: OrderDetailProps) {
             </div>
           </article>
         ) : null}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

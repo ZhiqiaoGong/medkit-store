@@ -120,7 +120,7 @@ export function CheckoutResult({
       : "Confirming your payment…";
 
   return (
-    <main className="checkout-result-page">
+    <main className="checkout-result-page" id="main-content">
       <section className="checkout-result-card">
         <span className="result-mark" aria-hidden="true">
           {cancelled ? "←" : paid ? "✓" : "…"}
@@ -135,8 +135,14 @@ export function CheckoutResult({
               : "Stripe has returned you to the store. We are waiting for the signed payment confirmation."}
         </p>
 
-        {isLoading ? <p className="result-status">Loading order…</p> : null}
-        {error ? <p className="result-error">{error}</p> : null}
+        <p className="result-status" role="status">
+          {isLoading ? "Loading order…" : ""}
+        </p>
+        {error ? (
+          <p className="result-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         {order ? (
           <div className="result-order">
             <div>

@@ -17,3 +17,9 @@ npm-debug.log*
 # Runtime
 pids/
 *.pid
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.playwright/

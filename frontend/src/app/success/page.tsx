@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import { CheckoutResult } from "@/components/checkout-result";
+
+export const metadata: Metadata = {
+  title: "Order confirmation",
+};
 
 export default async function SuccessPage({
   searchParams,

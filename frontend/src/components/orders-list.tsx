@@ -71,7 +71,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
   }, [loadOrders]);
 
   return (
-    <main className="orders-page">
+    <div className="orders-page">
       <header className="orders-header">
         <Link className="brand" href="/" aria-label="MedKit Studio home">
           <span className="brand-mark">M+</span>
@@ -82,7 +82,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
         </Link>
       </header>
 
-      <section className="orders-shell">
+      <main className="orders-shell" id="main-content">
         <div className="orders-title">
           <span className="eyebrow">Account history</span>
           <h1>My orders</h1>
@@ -106,8 +106,14 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
           </div>
         ) : null}
 
-        {token && isLoading ? <p className="result-status">Loading orders…</p> : null}
-        {error ? <p className="result-error">{error}</p> : null}
+        <p className="result-status" role="status">
+          {token && isLoading ? "Loading orders…" : ""}
+        </p>
+        {error ? (
+          <p className="result-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         {token && !isLoading && orders.length === 0 ? (
           <div className="empty-orders">
@@ -120,7 +126,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
         ) : null}
 
         {orders.length > 0 ? (
-          <div className="orders-list" aria-live="polite">
+          <div className="orders-list">
             {orders.map((order) => (
               <article className="order-card" key={order._id}>
                 <div className="order-card-header">
@@ -163,7 +169,7 @@ export function OrdersList({ apiBaseUrl }: OrdersListProps) {
             ))}
           </div>
         ) : null}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

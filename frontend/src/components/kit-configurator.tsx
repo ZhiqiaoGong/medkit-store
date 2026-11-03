@@ -197,8 +197,8 @@ export function KitConfigurator({
   }
 
   return (
-    <main>
-      <header className="site-header">
+    <>
+      <header className="site-header" inert={isAuthOpen}>
         <a className="brand" href="#top" aria-label="MedKit Studio home">
           <span className="brand-mark">M+</span>
           <span>MedKit Studio</span>
@@ -227,6 +227,7 @@ export function KitConfigurator({
         </nav>
       </header>
 
+      <main id="main-content" inert={isAuthOpen}>
       <section className="hero" id="top">
         <div className="hero-copy">
           <span className="eyebrow">Prepared around your life</span>
@@ -281,13 +282,15 @@ export function KitConfigurator({
             />
           </div>
 
-          <aside className="summary-card" aria-live="polite">
+          <div className="summary-card">
             <div className="summary-heading">
               <div>
                 <span className="eyebrow">Live configuration</span>
                 <h2>Your kit</h2>
               </div>
-              <span className="item-count">{selectedProducts.length} items</span>
+              <span className="item-count" aria-live="polite">
+                {selectedProducts.length} items
+              </span>
             </div>
 
             <div className="summary-lines">
@@ -313,15 +316,23 @@ export function KitConfigurator({
             </div>
 
             {quoteError && selectedProducts.length > 0 ? (
-              <p className="quote-error">{quoteError}</p>
+              <p className="quote-error" role="alert">
+                {quoteError}
+              </p>
             ) : null}
             {checkoutError ? (
-              <p className="quote-error">{checkoutError}</p>
+              <p className="quote-error" role="alert">
+                {checkoutError}
+              </p>
             ) : null}
 
             <div className="summary-total">
-              <span>Estimated total</span>
-              <strong className={isQuoting ? "is-updating" : ""}>
+              <span id="estimated-total-label">Estimated total</span>
+              <strong
+                aria-labelledby="estimated-total-label"
+                aria-live="polite"
+                className={isQuoting ? "is-updating" : ""}
+              >
                 {quote && selectedProducts.length > 0
                   ? money.format(quote.total)
                   : "—"}
@@ -352,7 +363,7 @@ export function KitConfigurator({
               <span aria-hidden="true">◇</span>
               Secure payment is handled by Stripe
             </div>
-          </aside>
+          </div>
         </div>
       </section>
 
@@ -364,6 +375,7 @@ export function KitConfigurator({
           <ProcessStep number="03" title="Be ready" text="Check out securely and keep your kit ready for the moments that matter." />
         </div>
       </section>
+      </main>
       <AuthDialog
         apiBaseUrl={apiBaseUrl}
         open={isAuthOpen}
@@ -372,7 +384,7 @@ export function KitConfigurator({
           setCheckoutError(null);
         }}
       />
-    </main>
+    </>
   );
 }
 
