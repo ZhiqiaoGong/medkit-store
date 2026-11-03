@@ -35,6 +35,7 @@ simultaneous checkout attempts cannot oversell low-stock inventory.
 | Local load testing | Quote scenario handled `27,717` requests in 30s at `0%` failure, `p95 45.82 ms` |
 | Production sanity load | Render quote-only check handled `482` requests at `0%` failure, `p95 77.43 ms` |
 | Production readiness | `/ready` checks MongoDB and Redis; protected `/metrics` exposes request counts, status codes, route timing, and latency percentiles |
+| Accessibility | `11` axe violations resolved to `0` across every page state, plus seven issues automated scanning cannot detect; guarded by `17` Playwright cases in CI |
 
 ## Highlights
 
@@ -49,6 +50,8 @@ simultaneous checkout attempts cannot oversell low-stock inventory.
 - Integration tests that cover checkout authorization, inventory reservation,
   webhook behavior, and concurrent oversell protection
 - Repeatable benchmark and load-test scripts for API latency and throughput
+- WCAG 2.1 AA conformance verified by axe, a keyboard and focus suite in CI, and
+  a manual VoiceOver pass
 
 ## Architecture
 
@@ -144,6 +147,7 @@ Frontend:
 cd frontend
 npm run lint
 npm run build
+npm run test:a11y
 ```
 
 If macOS rejects the native Next.js SWC binary, use the compatibility scripts in
@@ -266,6 +270,32 @@ The script writes a temporary user and order, so run it against production only
 when test-mode data is acceptable. Stripe Checkout session creation is skipped
 by default; add `-- --checkout` only when Stripe test keys and redirect URLs are
 configured and you want to verify the Checkout redirect path.
+
+## Accessibility
+
+The storefront is audited against WCAG 2.1 AA. An axe baseline reported eleven
+failing elements across seven page states, from three root causes: white text on
+the brand orange, the SKU label colour, and a complementary landmark nested
+inside `main`. All are resolved.
+
+Manual keyboard and screen reader testing found seven more that automated
+scanning cannot see: the sign-in dialog declared `aria-modal` but neither
+trapped focus nor restored it to its trigger, the background stayed reachable
+while the dialog was open, the whole order summary was a live region so every
+quantity change re-announced the entire card, async status and errors were
+never announced at all, the order line items had no table semantics, and all
+five routes shared one `<title>`.
+
+`npm run test:a11y` runs seventeen Playwright cases in CI: eight axe scans over
+every page state, plus assertions for tab order, the focus trap, focus
+restoration, background inertness, live region scope and table semantics. It
+runs against a production build and a fixture API, so it needs no database.
+
+Automated scanning has limits that the suite cannot cover — it can assert that
+table roles exist, but not that a screen reader speaks the column names. A
+manual VoiceOver pass covers that. See
+[docs/accessibility-audit.zh.md](docs/accessibility-audit.zh.md) for the full
+record.
 
 ## Backend Correctness Focus
 

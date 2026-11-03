@@ -8,7 +8,7 @@
 
 ## 0. 结果一句话
 
-**axe 违规 8 处 → 0 处**，另修掉 7 处自动工具查不到、靠手动键盘测试才发现的问题，接了 CI 守卫防回退（17 个用例），并用 VoiceOver 实测验收（六项全过）。
+**axe 违规 11 处 → 0 处**，另修掉 7 处自动工具查不到、靠手动键盘测试才发现的问题，接了 CI 守卫防回退（17 个用例），并用 VoiceOver 实测验收（六项全过）。
 
 ---
 
@@ -21,8 +21,11 @@
 | `/orders`（未登录） | `color-contrast` | 1 | serious |
 | `/success` | `color-contrast` | 1 | serious |
 | `/cancel` | `color-contrast` | 1 | serious |
+| `/` + 登录弹窗 | `color-contrast` | 1 | serious |
 | `/orders`（已登录） | — | 0 | — |
 | `/orders/:id` | — | 0 | — |
+
+合计 **11 个失败节点**，来自 **3 个根因**：
 
 两类对比度问题：
 
